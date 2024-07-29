@@ -1,0 +1,69 @@
+//Driver
+class yapp_tx_driver extends uvm_driver#(yapp_packet);
+
+
+  // Virtual Interface for monitoring DUT signals
+   virtual interface yapp_if vif;
+   int num_sent,i;
+
+    //virutual Methods
+  `uvm_component_utils_begin(yapp_tx_driver)
+      `uvm_field_int(num_sent,UVM_ALL_ON)
+    `uvm_component_utils_end  
+
+   function new(string name="yapp_tx_driver",uvm_component parent);
+     super.new(name,parent);
+   endfunction
+
+  function void build_phase(uvm_phase phase);
+    if(!yapp_vif_config::get(this,get_full_name(),"vif",vif))
+        `uvm_error( "NOVIF",{"virtual interface was set for ",get_full_name(),".vif"})
+    endfunction
+
+
+  function void start_of_simulation_phase(uvm_phase phase);
+    `uvm_info(get_type_name(),{"Start of simulation for",get_full_name()},UVM_HIGH);  
+  endfunction
+
+  task run_phase(uvm_phase phase);
+     fork
+      reset_signals();
+      get_and_drive();
+
+   
+    join
+endtask
+
+  task get_and_drive();
+    @(posedge vif.reset);
+    @(negedge vif.reset);
+    `uvm_info(get_type_name(), "Reset dropped", UVM_MEDIUM)
+    forever begin
+      seq_item_port.get_next_item(req); // getting from seq and driving/   // need to discuss
+
+      `uvm_info(get_type_name(), $sformatf("Sending Packet :\n%s", req.sprint()), UVM_HIGH)
+       
+      fork
+        begin
+          vif.send_to_dut(req.length, req.addr, req.parity, req.packet_delay);    //Need to discuss
+            vif.payload_mem[i] = req.payload[i];
+        end
+        @(posedge vif.drvstart) void'(begin_tr(req, "Driver_YAPP_Packet"));
+      join
+
+      end_tr(req); //need to discuss
+      num_sent++;
+      seq_item_port.item_done();
+    end
+  endtask : get_and_drive
+
+  task reset_signals();
+    //forever
+     vif.yapp_reset(); // need to discuss
+  endtask : reset_signals
+
+  function void report_phase(uvm_phase phase);
+    `uvm_info(get_type_name(), $sformatf("Report: YAPP TX driver sent %0d packets", num_sent), UVM_LOW)
+  endfunction
+
+endclass
