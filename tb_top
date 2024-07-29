@@ -1,0 +1,56 @@
+module hw_top;
+
+ logic[31:0] clock_period;
+ logic run_clock;
+ logic  clock;
+ logic  reset;
+
+ yapp_if in0(clock,reset);
+
+ clkgen clkgen (.clock(clock),
+                .reset(reset),
+                .clock_period(32'd10));
+
+
+  yapp_router dut(
+    .reset(reset),
+    .clock(clock),
+    .error(),
+
+    // YAPP interface
+    .in_data(),
+    .in_data_vld(),
+    .in_suspend(),
+
+    // Output Channels
+    //Channel 0
+    .data_0(),
+    .data_vld_0(),
+    .suspend_0(1'b0),
+    //Channel 1
+    .data_1(),
+    .data_vld_1(),
+    .suspend_1(1'b10),
+    //Channel 2
+    .data_2(),
+    .data_vld_2(),
+    .suspend_2(1'b0),
+
+    // HBUS Interface
+    .haddr(),
+    .hdata(),
+    .hen(),
+    .hwr_rd());
+
+
+ initial begin
+  reset<=1'b0;
+  @(negedge clock)
+   #1 reset<=1'b1;
+  @(negedge clock)
+  #1 reset<=1'b0;
+
+ end
+
+
+endmodule
